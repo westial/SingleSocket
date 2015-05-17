@@ -1,5 +1,5 @@
 #!usr/bin/env python
-"""Output handled by socket for one client only.
+"""Output handled by socket for one concurrent client only.
 
 Returns
 Websocket protocol is supported.
@@ -7,7 +7,7 @@ Websocket protocol is supported.
 Usage:
     ```
     # Starts
-    stream = SingleSocket(host='localhost', port=9999, web=False)
+    stream = Output(host='localhost', port=9999, web=False)
     stream.start()
 
     # Checks that port is available
@@ -28,25 +28,26 @@ import threading
 from hashlib import sha1
 
 
-class SingleSocket():
+class Output(object):
     """
     SingleSocket output class.
     """
 
     MAGIC = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
-    HSHAKE_RESP = "HTTP/1.1 101 Switching Protocols\r\n" \
-                  "Upgrade: websocket\r\n" \
-                  "Connection: Upgrade\r\n" \
-                  "Sec-WebSocket-Accept: {hash}\r\n" \
-                  "\r\n"
+    HANDSHAKE_HEAD = "HTTP/1.1 101 Switching Protocols\r\n" \
+                     "Upgrade: websocket\r\n" \
+                     "Connection: Upgrade\r\n" \
+                     "Sec-WebSocket-Accept: {hash}\r\n" \
+                     "\r\n"
 
-    def __init__(self, host, port, web=False):
+    def __init__(self, host, port, web=False, welcome=''):
         """
         Constructor
 
         :param host: str
         :param port: int
-        :param web: bool
+        :param web: bool. Flag for a websocket connection.
+        :param welcome: str. Message sent when a client is connected.
         :return: void
         """
         self._client = None
@@ -55,8 +56,9 @@ class SingleSocket():
         self._host = host
         self._port = port
         self._web = web
+        self._welcome = welcome
 
-        self.port_in_use = False
+        self._port_in_use = False
 
         self._server = None
         self._messages = Queue()
@@ -146,6 +148,9 @@ class SingleSocket():
             self._client = client
             self._connected = True
 
+            if self._welcome:
+                self.send(self._welcome)
+
             print "[*] Accepted connection from: {!s}:{:d}".format(address[0],
                                                                    address[1])
 
@@ -179,7 +184,7 @@ class SingleSocket():
     def _kill_client(self):
         """
         Given the threat for client handling, nicely closes the thread and
-        the client socket.
+        the client types.
 
         :return: void
         """
@@ -196,7 +201,7 @@ class SingleSocket():
 
     def _handshake(self, headers):
         """
-        Given the headers and the socket resource, does a handshake only on
+        Given the headers and the types resource, does a handshake only on
         websocket communication.
 
         :param headers: dict<str>
@@ -209,7 +214,7 @@ class SingleSocket():
 
         magic = self._hash_magic(socket_key=socket_key)
 
-        response = self.HSHAKE_RESP.format(hash=magic)
+        response = self.HANDSHAKE_HEAD.format(hash=magic)
 
         self._client.send(response)
 
@@ -270,7 +275,6 @@ class SingleSocket():
 
         self._send_message()
 
-
     @property
     def port_in_use(self):
         """
@@ -294,7 +298,7 @@ class SingleSocket():
     @classmethod
     def _hash_magic(cls, socket_key):
         """
-        Given the socket key returns a new hash composed by the key
+        Given the types key returns a new hash composed by the key
         and the magic uuid.
 
         :param socket_key: str

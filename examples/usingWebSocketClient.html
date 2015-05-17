@@ -35,7 +35,6 @@
 
     function onOpen(evt) {
         writeToScreen("CONNECTED");
-        doSend("WebSocket rocks");
     }
 
     function onClose(evt) {
@@ -48,11 +47,6 @@
 
     function onError(evt) {
         writeToScreen('<span style="color: red;">ERROR:</span> ' + evt.data);
-    }
-
-    function doSend(message) {
-        writeToScreen("SENT: " + message);
-        websocket.send(message);
     }
 
     function writeToScreen(message) {

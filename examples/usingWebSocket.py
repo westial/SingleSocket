@@ -24,17 +24,20 @@ import sys
 sys.path.append('..')
 
 import time
-from SingleSocket import SingleSocket
+from SingleSocket.Output import Output
 
 SOCKET_PORT = 9999
 SOCKET_HOST = '127.0.0.1'
 
-stream = SingleSocket(host=SOCKET_HOST, port=SOCKET_PORT, web=True)
+stream = Output(host=SOCKET_HOST,
+                port=SOCKET_PORT,
+                web=True,
+                welcome="Benvingut destraler!!")
 stream.start()
 
 if not stream.port_in_use:
     # Waiting while you are opening the client
-    time.sleep(10)
+    time.sleep(15)
 
     stream.send("Hello World!")
     time.sleep(1)
