@@ -1,9 +1,6 @@
 #!usr/bin/env python
 """Output handled by socket for one concurrent client only.
 
-Returns
-Websocket protocol is supported.
-
 Usage:
     ```
     # Starts
@@ -11,7 +8,7 @@ Usage:
     stream.start()
 
     # Checks that port is available
-    if not stream.port_in_use:
+    if stream.running:
 
         # Sends a message
         stream.send('Hello peer!!')
@@ -131,8 +128,6 @@ class Output(object):
         if not self._start_server():
 
             print "[x] Port in use: {:d}".format(self._port)
-
-            self.port_in_use = True
 
         while self._running:
             try:
@@ -276,24 +271,22 @@ class Output(object):
         self._send_message()
 
     @property
-    def port_in_use(self):
+    def port(self):
         """
-        Port in use flag getter
+        Returns listening port
+
+        :return: int
+        """
+        return self._port
+
+    @property
+    def running(self):
+        """
+        Returns True if socket is working
 
         :return: bool
         """
-        return self._port_in_use
-
-    @port_in_use.setter
-    def port_in_use(self, value):
-        """
-        Port in use flag setter
-
-        :param value: bool
-        :return: void
-        """
-        self._port_in_use = value
-        pass
+        return self._running
 
     @classmethod
     def _hash_magic(cls, socket_key):

@@ -24,7 +24,7 @@ Usage
     stream.start()
 
     # Checks that port is available
-    if not stream.port_in_use:
+    if not stream.port:
 
         # Sends a message
         stream.send('Hello peer!!')

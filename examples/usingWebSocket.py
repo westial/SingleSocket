@@ -35,20 +35,25 @@ stream = Output(host=SOCKET_HOST,
                 welcome="Benvingut destraler!!")
 stream.start()
 
-if not stream.port_in_use:
-    # Waiting while you are opening the client
-    time.sleep(15)
+while not stream.port and stream.running:
+    pass
 
-    stream.send("Hello World!")
-    time.sleep(1)
+if not stream.running:
+    exit(0)
 
-    stream.send("Hello Moon!")
-    time.sleep(1)
+# Waiting while you are opening the client
+time.sleep(15)
 
-    stream.send("Hello Mars!")
-    time.sleep(1)
+stream.send("Hello World!")
+time.sleep(1)
 
-    stream.send("Hello Juneda!")
-    time.sleep(1)
+stream.send("Hello Moon!")
+time.sleep(1)
 
-    stream.stop()
+stream.send("Hello Mars!")
+time.sleep(1)
+
+stream.send("Hello Juneda!")
+time.sleep(1)
+
+stream.stop()
