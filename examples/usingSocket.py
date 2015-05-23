@@ -31,16 +31,13 @@ stream = Output(host=SOCKET_HOST,
                 port=SOCKET_PORT,
                 web=False,
                 welcome="Benvingut destraler!!\n")
-stream.start()
 
-while not stream.port and stream.running:
-    pass
+port = stream.start()
+
+print('Emitting port: {:d}'.format(port))
 
 if not stream.running:
     exit(0)
-
-# Waiting while you are opening the client
-time.sleep(15)
 
 stream.send("Hello World!\n")
 time.sleep(1)

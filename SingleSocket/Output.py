@@ -1,5 +1,5 @@
 #!usr/bin/env python
-"""Output handled by socket for one concurrent client only.
+"""Output messaging handled by socket for one concurrent client only.
 
 Usage:
     ```
@@ -41,21 +41,22 @@ class Output(object):
         """
         Constructor
 
-        :param host: str
-        :param port: int
+        :param host: str. Host connected from. Set to '0.0.0.0' to allow all.
+        :param port: int. Port connected to.
         :param web: bool. Flag for a websocket connection.
         :param welcome: str. Message sent when a client is connected.
         :return: void
         """
         self._client = None
+        self._connected = threading.Event()
+
         self._running = True
-        self._connected = False
+
         self._host = host
         self._port = port
+
         self._web = web
         self._welcome = welcome
-
-        self._port_in_use = False
 
         self._server = None
         self._messages = Queue()
@@ -80,7 +81,7 @@ class Output(object):
 
     def stop(self):
         """
-        Nicely stops the current communication
+        Nice stop
 
         :return: void
         """
@@ -95,17 +96,22 @@ class Output(object):
 
         print "[*] Stopped communication"
 
-    def start(self):
+    def start(self, timeout=60):
         """
-        Starts communication
+        Starts communication threads and returns the used port. Waits until the
+        appropriate thread sets the connected event. After the set timeout
+        seconds, if client is not connected, continues.
 
+        :param timeout: int.
         :return: void
         """
         self._runtime = threading.Thread(target=self._async_start)
 
         self._runtime.start()
 
-        pass
+        self._connected.wait(timeout)
+
+        return self._port
 
     def send(self, message):
         """
@@ -117,6 +123,15 @@ class Output(object):
         self._messages.put(message)
 
         pass
+
+    @property
+    def running(self):
+        """
+        Returns True if socket is working. Main flag to know the status.
+
+        :return: bool
+        """
+        return self._running
 
     def _async_start(self):
         """
@@ -141,7 +156,7 @@ class Output(object):
                 self._kill_client()
 
             self._client = client
-            self._connected = True
+            self._connected.set()
 
             if self._welcome:
                 self.send(self._welcome)
@@ -183,8 +198,8 @@ class Output(object):
 
         :return: void
         """
-        if self._connected:
-            self._connected = False
+        if self._connected.is_set():
+            self._connected.clear()
             self._listener.join()
 
             print '[*] Client killed'
@@ -232,7 +247,7 @@ class Output(object):
 
             self._handshake(headers=headers)
 
-        while self._connected:
+        while self._connected.is_set():
 
             self._send_message()
 
@@ -269,24 +284,6 @@ class Output(object):
             print("[x] Error sending to a client")
 
         self._send_message()
-
-    @property
-    def port(self):
-        """
-        Returns listening port
-
-        :return: int
-        """
-        return self._port
-
-    @property
-    def running(self):
-        """
-        Returns True if socket is working
-
-        :return: bool
-        """
-        return self._running
 
     @classmethod
     def _hash_magic(cls, socket_key):

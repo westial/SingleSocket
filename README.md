@@ -21,16 +21,16 @@ Usage
 
     # Starts
     stream = Output(host='localhost', port=9999, web=False)
-    stream.start()
+    port = stream.start()
 
-    # Checks that port is available
-    if not stream.port:
+    if not stream.running:
+        exit(0)
 
-        # Sends a message
-        stream.send('Hello peer!!')
+    # Sends a message
+    stream.send('Hello peer!!')
 
-        # Stops
-        stream.stop()
+    # Stops
+    stream.stop()
 
 
 Author
