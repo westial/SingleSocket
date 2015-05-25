@@ -48,9 +48,9 @@ class Output(object):
         :return: void
         """
         self._client = None
-        self._connected = threading.Event()
 
-        self._running = True
+        self._released = threading.Event()
+        self._running = threading.Event()
 
         self._host = host
         self._port = port
@@ -87,7 +87,7 @@ class Output(object):
         """
         self._kill_client()
 
-        self._running = False
+        self._running.clear()
 
         self._server.shutdown(socket.SHUT_RDWR)
         self._server.close()
@@ -109,7 +109,7 @@ class Output(object):
 
         self._runtime.start()
 
-        self._connected.wait(timeout)
+        self._released.wait(timeout)
 
         return self._port
 
@@ -131,7 +131,7 @@ class Output(object):
 
         :return: bool
         """
-        return self._running
+        return self._running.is_set()
 
     def _async_start(self):
         """
@@ -143,6 +143,8 @@ class Output(object):
         if not self._start_server():
 
             print "[x] Port in use: {:d}".format(self._port)
+
+        self._released.set()
 
         while self._running:
             try:
@@ -156,7 +158,6 @@ class Output(object):
                 self._kill_client()
 
             self._client = client
-            self._connected.set()
 
             if self._welcome:
                 self.send(self._welcome)
@@ -181,6 +182,7 @@ class Output(object):
 
         try:
             self._server.bind((self._host, self._port))
+            self._running.set()
 
         except socket.error:
             return False
@@ -198,8 +200,8 @@ class Output(object):
 
         :return: void
         """
-        if self._connected.is_set():
-            self._connected.clear()
+        if self._released.is_set():
+            self._released.clear()
             self._listener.join()
 
             print '[*] Client killed'
@@ -247,7 +249,7 @@ class Output(object):
 
             self._handshake(headers=headers)
 
-        while self._connected.is_set():
+        while self._released.is_set():
 
             self._send_message()
 
