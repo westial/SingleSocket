@@ -61,7 +61,7 @@ class Output(object):
         self._server = None
         self._messages = Queue()
 
-        self._listener = None
+        self._emitter = None
         self._runtime = None
 
         pass
@@ -146,6 +146,10 @@ class Output(object):
 
             print "[x] Port in use: {:d}".format(self._port)
 
+            self._released.set()
+
+            return
+
         while self._running:
             try:
                 client, address = self._server.accept()
@@ -170,10 +174,10 @@ class Output(object):
             if self._welcome:
                 self.send(self._welcome)
 
-            self._listener = threading.Thread(target=self._talk)
-            self._listener.start()
+            self._emitter = threading.Thread(target=self._talk)
+            self._emitter.start()
 
-        pass
+        return
 
     def _start_server(self):
         """
@@ -187,10 +191,11 @@ class Output(object):
 
         try:
             self._server.bind((self._host, self._port))
-            self._running.set()
 
         except socket.error:
             return False
+
+        self._running.set()
 
         self._server.listen(1)
 
@@ -207,7 +212,7 @@ class Output(object):
         """
         if self._released.is_set():
             self._released.clear()
-            self._listener.join()
+            self._emitter.join()
 
             print '[*] Client killed'
 
