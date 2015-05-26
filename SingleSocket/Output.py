@@ -87,8 +87,6 @@ class Output(object):
         """
         self._kill_client()
 
-        self._running.clear()
-
         try:
             self._server.shutdown(socket.SHUT_RDWR)
             self._server.close()
@@ -156,8 +154,9 @@ class Output(object):
                                                             address[1])
 
             except socket.error:
-                print '[*] Broken server'
-                self.stop()
+                print '[x] Socket error accepting'
+
+                self._running.clear()
 
                 return
 
@@ -213,7 +212,7 @@ class Output(object):
             print '[*] Client killed'
 
         else:
-            print '[*] Client still not alive'
+            print '[!] No client to kill'
 
         pass
 
