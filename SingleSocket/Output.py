@@ -153,6 +153,8 @@ class Output(object):
 
             except socket.error:
                 print '[*] Broken server'
+                self.stop()
+
                 return
 
             if self._client:
