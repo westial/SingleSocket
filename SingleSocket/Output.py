@@ -144,11 +144,12 @@ class Output(object):
 
             print "[x] Port in use: {:d}".format(self._port)
 
-        self._released.set()
-
         while self._running:
             try:
                 client, address = self._server.accept()
+
+                print "[*] Accepted from: {!s}:{:d}".format(address[0],
+                                                            address[1])
 
             except socket.error:
                 print '[*] Broken server'
@@ -157,13 +158,12 @@ class Output(object):
             if self._client:
                 self._kill_client()
 
+            self._released.set()
+
             self._client = client
 
             if self._welcome:
                 self.send(self._welcome)
-
-            print "[*] Accepted connection from: {!s}:{:d}".format(address[0],
-                                                                   address[1])
 
             self._listener = threading.Thread(target=self._talk)
             self._listener.start()
