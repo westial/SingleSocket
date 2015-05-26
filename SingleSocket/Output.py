@@ -89,8 +89,12 @@ class Output(object):
 
         self._running.clear()
 
-        self._server.shutdown(socket.SHUT_RDWR)
-        self._server.close()
+        try:
+            self._server.shutdown(socket.SHUT_RDWR)
+            self._server.close()
+
+        except socket.error:
+            print "[!] Closing when server is not running"
 
         self._runtime.join()
 
