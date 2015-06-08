@@ -251,6 +251,8 @@ class Output(object):
         """
         if self._web:
 
+            print "[*] Websocket protocol enabled"
+
             data = self._client.recv(1024)
 
             print "[*] Received: " + data
