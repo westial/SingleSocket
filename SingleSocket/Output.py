@@ -122,6 +122,12 @@ class Output(object):
         :param message: str
         :return: bool
         """
+
+        if self._web and len(message) > 125:
+
+            self._messages.put(message[:125])
+            return self.send(message[125:])
+
         self._messages.put(message)
 
         pass
@@ -293,9 +299,9 @@ class Output(object):
 
             print "[*] Message sent:\n\t{!s}".format(first)
 
-        except socket.error:
+        except socket.error, exc:
 
-            print("[x] Error sending to a client")
+            print("[x] Error sending to a client. {!s}".format(exc.message))
 
         self._send_message()
 
