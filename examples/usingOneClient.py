@@ -14,8 +14,8 @@ Requirements:
 
 Run the example:
 
-    * Start the usingSocket.py script: `python usingSocket.py`
-    * Open a shell and connect the netcat client: `nc 127.0.0.1 9999`
+    * Start the usingOneClient.py script: `python usingOneClient.py`
+    * Open a Terminal and connect the netcat client: `nc 127.0.0.1 9999`
 """
 
 import sys
@@ -43,16 +43,16 @@ if not stream.running:
 # wait for me
 time.sleep(5)
 
-stream.send("Hello World!\n")
+stream.append_msg("Hello World!\n")
 time.sleep(1)
 
-stream.send("Hello Moon!\n")
+stream.append_msg("Hello Moon!\n")
 time.sleep(1)
 
-stream.send("Hello Mars!\n")
+stream.append_msg("Hello Mars!\n")
 time.sleep(1)
 
-stream.send("Hello Juneda!\n")
+stream.append_msg("Hello Juneda!\n")
 time.sleep(1)
 
 stream.stop()

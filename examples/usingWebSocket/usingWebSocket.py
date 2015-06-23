@@ -21,7 +21,7 @@ Run the example:
 """
 
 import sys
-sys.path.append('..')
+sys.path.append('../..')
 
 import time
 from SingleSocket.Output import Output
@@ -31,8 +31,7 @@ SOCKET_HOST = '127.0.0.1'
 
 stream = Output(host=SOCKET_HOST,
                 port=SOCKET_PORT,
-                web=True,
-                welcome="Benvingut destraler!!")
+                web=True)
 
 port = stream.start()
 
@@ -44,16 +43,16 @@ if not stream.running:
 # wait for me
 time.sleep(5)
 
-stream.send("Hello World!")
+stream.append_msg("Hello World!")
 time.sleep(1)
 
-stream.send("Hello Moon!")
+stream.append_msg("Hello Moon!")
 time.sleep(1)
 
-stream.send("Hello Mars!")
+stream.append_msg("Hello Mars!")
 time.sleep(1)
 
-stream.send("Hello Juneda!")
+stream.append_msg("Hello Juneda!")
 time.sleep(1)
 
 stream.stop()

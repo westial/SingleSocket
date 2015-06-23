@@ -1,13 +1,15 @@
 """Usage example of a SingleSocket talking with unlimited number of socket
-clients.
+clients but only the client who sends the valid password can be listening.
 
 What it does:
 
     * Starts socket server and opens a socket client on server waiting for
       clients.
-    * When client connects, the server side client sends some messages.
-    * If another client opens a communication, all clients receive the
-      same messages
+    * When client connects, the server side client waits for the password.
+    * If client sends the valid password the server provides the messages.
+    * If client sends a wrong password the server disconnects client.
+    * If another clients open a communication and the server validates them,
+      all valid clients receive the same messages.
 
 Requirements:
 
@@ -15,8 +17,9 @@ Requirements:
 
 Run the example:
 
-    * Start the usingMultiClient.py script: `python usingMultiClient.py`
-    * Open a shell and connect the netcat client: `nc 127.0.0.1 9999`
+    * Start the usingKeyPass.py script: `python usingKeyPass.py`
+    * Open a Terminal and connect the netcat client: `nc 127.0.0.1 9999`
+    * Write 1234 and send it by clicking Intro or Enter in the Terminal.
 """
 
 import sys
@@ -31,6 +34,7 @@ SOCKET_HOST = '127.0.0.1'
 
 stream = Output(host=SOCKET_HOST,
                 port=SOCKET_PORT,
+                password='1234',
                 web=False)
 
 port = stream.start()

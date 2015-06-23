@@ -1,5 +1,5 @@
 #!usr/bin/env python
-"""Output messaging handled by socket for one concurrent client only.
+"""Output socket for limited and unlimited concurrent clients.
 
 Usage:
     ```
@@ -63,7 +63,11 @@ class Output(object):
         self._port = port
 
         self._web = web
-        self._welcome = welcome
+
+        if not welcome:
+            welcome = 'You are logged in'
+
+        self._welcome = '{!s}{!s}'.format(welcome, '\n')
 
         self._server = None
         self._messages = Queue()
@@ -122,7 +126,7 @@ class Output(object):
 
         return self._port
 
-    def send(self, message):
+    def append_msg(self, message):
         """
         Puts a message into the messages queue to be sent immediately.
 
@@ -133,7 +137,7 @@ class Output(object):
         if self._web and len(message) > 125:
 
             self._messages.put(message[:125])
-            return self.send(message[125:])
+            return self.append_msg(message[125:])
 
         self._messages.put(message)
 
@@ -183,9 +187,6 @@ class Output(object):
             self._released.set()
 
             self._new_clients.put(client)
-
-            if self._welcome:
-                self.send(self._welcome)
 
             self._emitter = threading.Thread(target=self._talk)
             self._emitter.start()
@@ -267,13 +268,42 @@ class Output(object):
 
         print "[*] Handshake response:\n\t{!s}".format(response)
 
-    def _send(self, msg):
+    @classmethod
+    def _format_web_msg(cls, msg):
         """
-        Given a message sends to all connected clients
+        Given a message returns the content formatted to send it using websocket
+        protocol.
+
+        :param msg: str
+        :return: str
+        """
+        message = bytearray([0b10000001, len(msg)])
+
+        # append the data bytes
+        for byte in bytearray(msg):
+            message.append(byte)
+
+        return message
+
+    def _send(self, msg, clients=list()):
+        """
+        Given a message sends to all connected clients.
+
+        If clients parameter is set sends the message to the list of clients
+        contained by.
+
+        Else if clients is not set or is empty, sends the message to the context
+        logged in clients.
+
         :param msg: mixed
+        :param clients: list
         :return: void
         """
-        clients = list(self._clients.queue)
+        if self._web:
+            msg = self._format_web_msg(msg=msg)
+
+        if not clients:
+            clients = list(self._clients.queue)
 
         while len(clients):
             client = clients.pop(0)
@@ -298,9 +328,9 @@ class Output(object):
 
         client = self._new_clients.get()
 
-        data = self._receive_hello(client=client)
-
         if self._web:
+
+            data = self._receive_hello(client=client, handshake=True)
 
             print "[*] Websocket protocol is enabled"
 
@@ -308,25 +338,30 @@ class Output(object):
 
             self._handshake(headers=headers, client=client)
 
-            data = self._receive_hello(client=client)
+        data = self._receive_hello(client=client, handshake=False)
 
         if self._login(data):
+            self._send(self._welcome, [client])
             self._clients.put(client)
 
         else:
-            client.send('Authorized only')
+            self._send('Authorized only\n', [client])
             client.close()
 
         self._login_all()
 
-    def _receive_hello(self, client):
+    def _receive_hello(self, client, handshake=False):
         """
-        If password is expected and/or working on websocket mode pauses client
-        to receive data from new client.
+        Given a socket client waits for receiving data from client.
+        If context password is set waits and returns the received data.
+        If handshake parameter is True waits and returns the received data.
+        If any of above conditions happens does not wait and returns None
 
+        :param client: resource socket client
+        :param handshake: bool
         :return: str|None
         """
-        if not self._password:
+        if not self._password and not handshake:
             return None
 
         hello = client.recv(1024)
@@ -346,7 +381,7 @@ class Output(object):
         if not self._password:
             return True
 
-        elif self._password == key_pass:
+        elif self._password == key_pass.strip():
             return True
 
         else:
@@ -366,7 +401,7 @@ class Output(object):
 
         while self._released.is_set():
 
-            self._send_message()
+            self._send_all()
 
         self._close_all()
 
@@ -379,12 +414,12 @@ class Output(object):
             return
 
         client = self._clients.get()
-        client.send('Connection closed')
+        self._send('Connection closed\n', [client])
         client.close()
 
         self._close_all()
 
-    def _send_message(self):
+    def _send_all(self):
         """
         Prepares and sends all message in queue.
 
@@ -393,28 +428,18 @@ class Output(object):
         if self._messages.empty():
             return
 
-        first = self._messages.get()
-
-        if self._web:
-            message = bytearray([0b10000001, len(first)])
-
-            # append the data bytes
-            for byte in bytearray(first):
-                message.append(byte)
-
-        else:
-            message = first
+        message = self._messages.get()
 
         try:
             self._send(message)
 
-            print "[*] Message sent:\n\t{!s}".format(first)
+            print "[*] Message sent:\n\t{!s}".format(message)
 
         except socket.error, exc:
 
             print("[x] Error sending to a client. {!s}".format(exc.message))
 
-        self._send_message()
+        self._send_all()
 
     @classmethod
     def _hash_magic(cls, socket_key):
