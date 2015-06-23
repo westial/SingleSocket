@@ -1,9 +1,8 @@
-"""Usage example of a SingleSocket talking with only one html client by
-websocket.
+"""Usage example of a SingleSocket talking with only one socket client.
 
 What it does:
 
-    * Starts socket server and opens a websocket client on server waiting for
+    * Starts socket server and opens a socket client on server waiting for
       a client.
     * When client connects, the server side client sends some messages.
     * If another client opens a communication the first client will be
@@ -11,13 +10,12 @@ What it does:
 
 Requirements:
 
-    * An html5 compatible browser with enabled websocket feature.
     * Python 2.7.x
 
 Run the example:
 
-    * Start the usingWebSocket.py script: `python usingWebSocket.py`
-    * Open the usingWebSocketClient.html in your browser
+    * Start the usingSocket.py script: `python usingSocket.py`
+    * Open a shell and connect the netcat client: `nc 127.0.0.1 9999`
 """
 
 import sys
@@ -31,8 +29,9 @@ SOCKET_HOST = '127.0.0.1'
 
 stream = Output(host=SOCKET_HOST,
                 port=SOCKET_PORT,
-                web=True,
-                welcome="Benvingut destraler!!")
+                web=False,
+                max_clients=1,
+                welcome="Benvingut destraler!!\n")
 
 port = stream.start()
 
@@ -44,16 +43,16 @@ if not stream.running:
 # wait for me
 time.sleep(5)
 
-stream.send("Hello World!")
+stream.send("Hello World!\n")
 time.sleep(1)
 
-stream.send("Hello Moon!")
+stream.send("Hello Moon!\n")
 time.sleep(1)
 
-stream.send("Hello Mars!")
+stream.send("Hello Mars!\n")
 time.sleep(1)
 
-stream.send("Hello Juneda!")
+stream.send("Hello Juneda!\n")
 time.sleep(1)
 
 stream.stop()

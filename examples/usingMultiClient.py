@@ -19,6 +19,7 @@ Run the example:
 """
 
 import sys
+
 sys.path.append('..')
 
 import time
@@ -29,8 +30,7 @@ SOCKET_HOST = '127.0.0.1'
 
 stream = Output(host=SOCKET_HOST,
                 port=SOCKET_PORT,
-                web=False,
-                welcome="Benvingut destraler!!\n")
+                web=False)
 
 port = stream.start()
 
@@ -38,6 +38,9 @@ print('Emitting port: {:d}'.format(port))
 
 if not stream.running:
     exit(0)
+
+# wait for me
+time.sleep(5)
 
 stream.send("Hello World!\n")
 time.sleep(1)

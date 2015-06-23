@@ -37,17 +37,24 @@ class Output(object):
                      "Sec-WebSocket-Accept: {hash}\r\n" \
                      "\r\n"
 
-    def __init__(self, host, port, web=False, welcome=''):
+    def __init__(self, host, port, web=False, max_clients=None, password=None,
+                 welcome=''):
         """
         Constructor
 
         :param host: str. Host connected from. Set to '0.0.0.0' to allow all.
         :param port: int. Port connected to.
         :param web: bool. Flag for a websocket connection.
+        :param max_clients: bool. 0 or None for unlimited.
+        :param password: str. If set is used for logging in clients.
         :param welcome: str. Message sent when a client is connected.
         :return: void
         """
-        self._client = None
+        self._max_clients = max_clients
+        self._new_clients = Queue()
+        self._clients = Queue()
+
+        self._password = password
 
         self._released = threading.Event()
         self._running = threading.Event()
@@ -85,14 +92,14 @@ class Output(object):
 
         :return: void
         """
-        self._kill_client()
-
         try:
             self._server.shutdown(socket.SHUT_RDWR)
             self._server.close()
 
         except socket.error:
             print "[!] Closing when server is not running"
+
+        self._kill_emitter()
 
         self._runtime.join()
 
@@ -107,7 +114,7 @@ class Output(object):
         :param timeout: int.
         :return: void
         """
-        self._runtime = threading.Thread(target=self._async_start)
+        self._runtime = threading.Thread(target=self._listen)
 
         self._runtime.start()
 
@@ -141,9 +148,9 @@ class Output(object):
         """
         return self._running.is_set()
 
-    def _async_start(self):
+    def _listen(self):
         """
-        Starts asynchronously
+        Starts listening asynchronously
 
         :return: void
         """
@@ -170,12 +177,12 @@ class Output(object):
 
                 return
 
-            if self._client:
-                self._kill_client()
+            if self._reaches_max_clients():
+                self._clients.get()
 
             self._released.set()
 
-            self._client = client
+            self._new_clients.put(client)
 
             if self._welcome:
                 self.send(self._welcome)
@@ -184,6 +191,18 @@ class Output(object):
             self._emitter.start()
 
         return
+
+    def _reaches_max_clients(self):
+        """
+        Checks if connection reaches the max clients limit.
+        If max clients is 0 or unset, clients number is unlimited.
+
+        :return: bool
+        """
+        result = self._max_clients \
+                 and self._clients.qsize() >= self._max_clients
+
+        return result
 
     def _start_server(self):
         """
@@ -209,7 +228,7 @@ class Output(object):
 
         return True
 
-    def _kill_client(self):
+    def _kill_emitter(self):
         """
         Given the threat for client handling, nicely closes the thread and
         the client types.
@@ -220,14 +239,14 @@ class Output(object):
             self._released.clear()
             self._emitter.join()
 
-            print '[*] Client killed'
+            print '[*] Emitter killed'
 
         else:
-            print '[!] No client to kill'
+            print '[!] No emitter to kill'
 
         pass
 
-    def _handshake(self, headers):
+    def _handshake(self, headers, client):
         """
         Given the headers and the types resource, does a handshake only on
         websocket communication.
@@ -244,34 +263,126 @@ class Output(object):
 
         response = self.HANDSHAKE_HEAD.format(hash=magic)
 
-        self._client.send(response)
+        client.send(response)
 
         print "[*] Handshake response:\n\t{!s}".format(response)
 
-    def _talk(self):
+    def _send(self, msg):
         """
-        Receives the input from the new client and maintains the communication
-        meanwhile the connection with the client is alive.
+        Given a message sends to all connected clients
+        :param msg: mixed
+        :return: void
+        """
+        clients = list(self._clients.queue)
+
+        while len(clients):
+            client = clients.pop(0)
+            client.send(msg)
+
+        return
+
+    def _login_all(self):
+        """
+        In case of normal socket receives the client key pass.
+
+        In case of websocket receives the data for handshake, does the
+        appropriate handshake and after receives the key pass.
+
+        Accepts only valid new clients moving them to logged in clients.
+        Only logged in clients receive the output messages.
 
         :return: void
         """
+        if self._new_clients.empty():
+            return
+
+        client = self._new_clients.get()
+
+        data = self._receive_hello(client=client)
+
         if self._web:
 
-            print "[*] Websocket protocol enabled"
-
-            data = self._client.recv(1024)
-
-            print "[*] Received: " + data
+            print "[*] Websocket protocol is enabled"
 
             headers = self._parse_headers(data)
 
-            self._handshake(headers=headers)
+            self._handshake(headers=headers, client=client)
+
+            data = self._receive_hello(client=client)
+
+        if self._login(data):
+            self._clients.put(client)
+
+        else:
+            client.send('Authorized only')
+            client.close()
+
+        self._login_all()
+
+    def _receive_hello(self, client):
+        """
+        If password is expected and/or working on websocket mode pauses client
+        to receive data from new client.
+
+        :return: str|None
+        """
+        if not self._password:
+            return None
+
+        hello = client.recv(1024)
+
+        print "[*] Received: " + hello
+
+        return hello
+
+    def _login(self, key_pass):
+        """
+        Given a key pass returns True if matches with the context password.
+        Returns False if does not match.
+
+        :param key_pass: str
+        :return: bool
+        """
+        if not self._password:
+            return True
+
+        elif self._password == key_pass:
+            return True
+
+        else:
+            return False
+
+    def _talk(self):
+        """
+        - Receives the input from the new client.
+        - Log in the new clients.
+        - Maintains the communication meanwhile the connection with the client
+        is alive.
+
+        :return: void
+        """
+
+        self._login_all()
 
         while self._released.is_set():
 
             self._send_message()
 
-        self._client.close()
+        self._close_all()
+
+    def _close_all(self):
+        """
+        Closes all clients and dequeues clients container
+        :return: void
+        """
+        if self._clients.empty():
+            return
+
+        client = self._clients.get()
+        client.send('Connection closed')
+        client.close()
+
+        self._close_all()
 
     def _send_message(self):
         """
@@ -295,7 +406,7 @@ class Output(object):
             message = first
 
         try:
-            self._client.send(message)
+            self._send(message)
 
             print "[*] Message sent:\n\t{!s}".format(first)
 
