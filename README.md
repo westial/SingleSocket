@@ -14,10 +14,8 @@ client connects to the same socket, the first client is disconnected.
 Provided an optional key pass authorization validating the client who knows
 the password.
 
-Optionally you can connect a javascript application by the websocket protocol.
-Key pass authorization is not support on this mode.
-
-See the examples.
+See the examples. There is a websocket protocol socket example made in 
+javascript, a multiple client socket and unique client socket example too.
 
 
 Install
